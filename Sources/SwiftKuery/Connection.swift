@@ -18,7 +18,7 @@
 
 /// Defines the protocol which all database plugins must implement.
 public protocol Connection {
-  
+
     /// The `QueryBuilder` with connection specific substitutions.
     var queryBuilder: QueryBuilder { get }
     
@@ -32,7 +32,12 @@ public protocol Connection {
     
     /// An indication whether there is a connection to the database.
     var isConnected: Bool { get }
-    
+
+    /// Set a weak reference to a wrapping ConnectionPoolConnection
+    ///
+    /// - Parameter to: A ConnectionPoolConnection instance.
+    func setConnectionPoolWrapper(to wrapper: ConnectionPoolConnection?)
+
     /// Execute a query.
     ///
     /// - Parameter query: The query to execute.
@@ -151,7 +156,7 @@ public protocol Connection {
     ///
     /// - Parameter savepoint: The name of the savepoint to release.
     /// - Parameter onCompletion: The function to be called when the execution of release savepoint command has completed.
-    func release(savepoint: String, onCompletion: @escaping ((QueryResult) -> ()))    
+    func release(savepoint: String, onCompletion: @escaping ((QueryResult) -> ()))
 }
 
 public extension Connection {

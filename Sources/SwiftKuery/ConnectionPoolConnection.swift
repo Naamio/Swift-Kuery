@@ -32,7 +32,7 @@
  ```
  */
 public class ConnectionPoolConnection: Connection {
-    
+
     private var connection: Connection?
     private weak var pool: ConnectionPool?
  
@@ -45,14 +45,20 @@ public class ConnectionPoolConnection: Connection {
     init(connection: Connection, pool: ConnectionPool) {
         self.connection = connection
         self.pool = pool
+        self.connection?.setConnectionPoolWrapper(to: self)
     }
     
     deinit {
         if let connection = connection {
+            self.connection?.setConnectionPoolWrapper(to: nil)
             pool?.release(connection: connection)
         }
     }
-    
+
+    public func setConnectionPoolWrapper(to wrapper: ConnectionPoolConnection?) {
+        return
+    }
+
     // MARK: Connections
     /// Establish a connection with the database.
     ///
