@@ -31,8 +31,8 @@ public protocol Connection {
 
     /// Establish a connection with the database.
     ///
-    /// - Parameter onCompletion: The function to be called when the connection is established.
-    func connectSync(onCompletion: @escaping (QueryError?) -> ())
+    /// - Returns: A QueryError if the connection cannot connect, otherwise nil
+    func connectSync() -> QueryError?
 
     /// Close the connection to the database.
     func closeConnection()
@@ -54,20 +54,20 @@ public protocol Connection {
     /// Execute a query.
     ///
     /// - Parameter query: The query to execute.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    func executeSync(query: Query, onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(query: Query) -> QueryResult
     
     /// Execute a raw query.
     ///
-    /// - Parameter query: A String with the query to execute.
+    /// - Parameter raw: A String with the query to execute.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     func execute(_ raw: String, onCompletion: @escaping ((QueryResult) -> ()))
 
     /// Execute a raw query.
     ///
-    /// - Parameter query: A String with the query to execute.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    func executeSync(_ raw: String, onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Parameter raw: A String with the query to execute.
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(_ raw: String) -> QueryResult
     
     /// Execute a query with parameters.
     ///
@@ -80,22 +80,22 @@ public protocol Connection {
     ///
     /// - Parameter query: The query to execute.
     /// - Parameter parameters: An array of the parameters.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    func executeSync(query: Query, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(query: Query, parameters: [Any?]) -> QueryResult
     
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A String with the query to execute.
+    /// - Parameter raw: A String with the query to execute.
     /// - Parameter parameters: An array of the parameters.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     func execute(_ raw: String, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ()))
 
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A String with the query to execute.
+    /// - Parameter raw: A String with the query to execute.
     /// - Parameter parameters: An array of the parameters.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    func executeSync(_ raw: String, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(_ raw: String, parameters: [Any?]) -> QueryResult
     
     /// Execute a query with parameters.
     ///
@@ -108,22 +108,22 @@ public protocol Connection {
     ///
     /// - Parameter query: The query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    func executeSync(query: Query, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(query: Query, parameters: [String:Any?]) -> QueryResult
     
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A String with the query to execute.
+    /// - Parameter raw: A String with the query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     func execute(_ raw: String, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ()))
 
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A String with the query to execute.
+    /// - Parameter raw: A String with the query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    func executeSync(_ raw: String, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(_ raw: String, parameters: [String:Any?]) -> QueryResult
     
     /// Prepare statement.
     ///
@@ -148,8 +148,8 @@ public protocol Connection {
     /// Execute a prepared statement.
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    func executeSync(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(preparedStatement: PreparedStatement) -> QueryResult
 
     /// Execute a prepared statement with parameters.
     ///
@@ -162,8 +162,8 @@ public protocol Connection {
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
     /// - Parameter parameters: An array of the parameters.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    func executeSync(preparedStatement: PreparedStatement, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(preparedStatement: PreparedStatement, parameters: [Any?]) -> QueryResult
 
     /// Execute a prepared statement with parameters.
     ///
@@ -176,8 +176,8 @@ public protocol Connection {
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    func executeSync(preparedStatement: PreparedStatement, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the execute operation
+    func executeSync(preparedStatement: PreparedStatement, parameters: [String:Any?]) -> QueryResult
 
     /// Release a prepared statement.
     ///
@@ -188,8 +188,8 @@ public protocol Connection {
     /// Release a prepared statement.
     ///
     /// - Parameter preparedStatement: The prepared statement to release.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    func releaseSync(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the operation
+    func releaseSync(preparedStatement: PreparedStatement) -> QueryResult
     
     /// Return a String representation of the query.
     ///
@@ -205,8 +205,8 @@ public protocol Connection {
 
     /// Start a transaction.
     ///
-    /// - Parameter onCompletion: The function to be called when the execution of start transaction command has completed.
-    func startTransactionSync(onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the operation
+    func startTransactionSync() -> QueryResult
     
     /// Commit the current transaction.
     ///
@@ -215,8 +215,8 @@ public protocol Connection {
 
     /// Commit the current transaction.
     ///
-    /// - Parameter onCompletion: The function to be called when the execution of commit transaction command has completed.
-    func commitSync(onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the operation
+    func commitSync() -> QueryResult
 
     /// Rollback the current transaction.
     ///
@@ -225,8 +225,8 @@ public protocol Connection {
 
     /// Rollback the current transaction.
     ///
-    /// - Parameter onCompletion: The function to be called when the execution of rolback transaction command has completed.
-    func rollbackSync(onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the operation
+    func rollbackSync() -> QueryResult
 
     /// Create a savepoint.
     ///
@@ -237,8 +237,8 @@ public protocol Connection {
     /// Create a savepoint.
     ///
     /// - Parameter savepoint: The name to  be given to the created savepoint.
-    /// - Parameter onCompletion: The function to be called when the execution of create savepoint command has completed.
-    func createSync(savepoint: String, onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the operation
+    func createSync(savepoint: String) -> QueryResult
 
     /// Rollback the current transaction to the specified savepoint.
     ///
@@ -249,8 +249,8 @@ public protocol Connection {
     /// Rollback the current transaction to the specified savepoint.
     ///
     /// - Parameter to savepoint: The name of the savepoint to rollback to.
-    /// - Parameter onCompletion: The function to be called when the execution of rolback transaction command has completed.
-    func rollbackSync(to savepoint: String, onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the operation
+    func rollbackSync(to savepoint: String) -> QueryResult
 
     /// Release a savepoint.
     ///
@@ -261,8 +261,8 @@ public protocol Connection {
     /// Release a savepoint.
     ///
     /// - Parameter savepoint: The name of the savepoint to release.
-    /// - Parameter onCompletion: The function to be called when the execution of release savepoint command has completed.
-    func releaseSync(savepoint: String, onCompletion: @escaping ((QueryResult) -> ()))
+    /// - Returns: A QueryResult representing the result of the operation
+    func releaseSync(savepoint: String) -> QueryResult
 }
 
 public extension Connection {
@@ -294,7 +294,7 @@ public extension Connection {
         }
     }
 
-    func executeSync(query: Query, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+    func executeSync(query: Query, parameters: [String:Any?]) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(query: query, parameters: parameters) { res in
@@ -303,9 +303,8 @@ public extension Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 }

@@ -83,8 +83,8 @@ public class ConnectionPoolConnection: Connection {
     
     /// Establish a connection with the database.
     ///
-    /// - Parameter onCompletion: The function to be called when the connection is established.
-    public func connectSync(onCompletion: @escaping (QueryError?) -> ()) {
+    /// - Returns: A QueryError if the connection cannot connect, otherwise nil
+    public func connectSync() -> QueryError? {
         var error: QueryError?
         let semaphore = DispatchSemaphore(value: 0)
         connect() { err in
@@ -94,10 +94,9 @@ public class ConnectionPoolConnection: Connection {
         semaphore.wait()
         guard let errorUnwrapped = error else {
             // Everything worked
-            onCompletion(nil)
-            return
+            return nil
         }
-        onCompletion(errorUnwrapped)
+        return errorUnwrapped
     }
 
     /**
@@ -149,8 +148,8 @@ public class ConnectionPoolConnection: Connection {
     /// Execute a query.
     ///
     /// - Parameter query: The query to execute.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    public func executeSync(query: Query, onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(query: Query) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(query: query) { res in
@@ -159,15 +158,14 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Execute a raw query.
     ///
-    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter raw: A string that contains the query to execute.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(_ raw: String, onCompletion: @escaping ((QueryResult) -> ())) {
         DispatchQueue.global().async {
@@ -181,9 +179,9 @@ public class ConnectionPoolConnection: Connection {
 
     /// Execute a raw query.
     ///
-    /// - Parameter query: A string that contains the query to execute.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    public func executeSync(_ raw: String, onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Parameter raw: A string that contains the query to execute.
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(_ raw: String) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(raw) { res in
@@ -192,10 +190,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Execute a query with parameters.
@@ -217,8 +214,8 @@ public class ConnectionPoolConnection: Connection {
     ///
     /// - Parameter query: The query to execute.
     /// - Parameter parameters: An array of the parameters.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    public func executeSync(query: Query, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(query: Query, parameters: [Any?]) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(query: query, parameters: parameters) { res in
@@ -227,15 +224,14 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter raw: A string that contains the query to execute.
     /// - Parameter parameters: An array of the parameters.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(_ raw: String, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
@@ -250,10 +246,10 @@ public class ConnectionPoolConnection: Connection {
 
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter raw: A string that contains the query to execute.
     /// - Parameter parameters: An array of the parameters.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    public func executeSync(_ raw: String, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(_ raw: String, parameters: [Any?]) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(raw, parameters: parameters) { res in
@@ -262,10 +258,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Execute a query with parameters.
@@ -287,8 +282,8 @@ public class ConnectionPoolConnection: Connection {
     ///
     /// - Parameter query: The query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    public func executeSync(query: Query, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(query: Query, parameters: [String:Any?]) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(query: query, parameters: parameters) { res in
@@ -297,15 +292,14 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter raw: A string that contains the query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(_ raw: String, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
@@ -320,10 +314,10 @@ public class ConnectionPoolConnection: Connection {
 
     /// Execute a raw query with parameters.
     ///
-    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter raw: A string that contains the query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
-    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
-    public func executeSync(_ raw: String, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(_ raw: String, parameters: [String:Any?]) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(raw, parameters: parameters) { res in
@@ -332,10 +326,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     // MARK: Prepared statements
@@ -381,8 +374,8 @@ public class ConnectionPoolConnection: Connection {
     /// Execute a prepared statement.
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    public func executeSync(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(preparedStatement: PreparedStatement) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(preparedStatement: preparedStatement) { res in
@@ -391,10 +384,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Execute a prepared statement with parameters.
@@ -416,8 +408,8 @@ public class ConnectionPoolConnection: Connection {
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
     /// - Parameter parameters: An array of the parameters.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    public func executeSync(preparedStatement: PreparedStatement, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(preparedStatement: PreparedStatement, parameters: [Any?]) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(preparedStatement: preparedStatement, parameters: parameters) { res in
@@ -426,10 +418,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Execute a prepared statement with parameters.
@@ -451,8 +442,8 @@ public class ConnectionPoolConnection: Connection {
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    public func executeSync(preparedStatement: PreparedStatement, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the execute operation
+    public func executeSync(preparedStatement: PreparedStatement, parameters: [String:Any?]) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         execute(preparedStatement: preparedStatement, parameters: parameters) { res in
@@ -461,10 +452,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Release a prepared statement.
@@ -484,8 +474,8 @@ public class ConnectionPoolConnection: Connection {
     /// Release a prepared statement.
     ///
     /// - Parameter preparedStatement: The prepared statement to release.
-    /// - Parameter onCompletion: The function to be called when the execution has completed.
-    public func releaseSync(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the operation
+    public func releaseSync(preparedStatement: PreparedStatement) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         release(preparedStatement: preparedStatement) { res in
@@ -494,10 +484,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Return a String representation of the query.
@@ -531,8 +520,8 @@ public class ConnectionPoolConnection: Connection {
 
     /// Start a transaction.
     ///
-    /// - Parameter onCompletion: The function to be called when the execution of the start transaction command has completed.
-    public func startTransactionSync(onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the operation
+    public func startTransactionSync() -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         startTransaction() { res in
@@ -541,10 +530,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Commit the current transaction.
@@ -562,8 +550,8 @@ public class ConnectionPoolConnection: Connection {
 
     /// Commit the current transaction.
     ///
-    /// - Parameter onCompletion: The function to be called when the execution of the commit transaction command has completed.
-    public func commitSync(onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the operation
+    public func commitSync() -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         commit() { res in
@@ -572,10 +560,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Rollback the current transaction.
@@ -593,8 +580,8 @@ public class ConnectionPoolConnection: Connection {
 
     /// Rollback the current transaction.
     ///
-    /// - Parameter onCompletion: The function to be called when the execution of the rollback transaction command has completed.
-    public func rollbackSync(onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the operation
+    public func rollbackSync() -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         rollback() { res in
@@ -603,10 +590,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Create a savepoint.
@@ -626,8 +612,8 @@ public class ConnectionPoolConnection: Connection {
     /// Create a savepoint.
     ///
     /// - Parameter savepoint: The name to  be given to the created savepoint.
-    /// - Parameter onCompletion: The function to be called when the execution of the create savepoint command has completed.
-    public func createSync(savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the operation
+    public func createSync(savepoint: String) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         create(savepoint: savepoint) { res in
@@ -636,10 +622,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Rollback the current transaction to the specified savepoint.
@@ -659,8 +644,8 @@ public class ConnectionPoolConnection: Connection {
     /// Rollback the current transaction to the specified savepoint.
     ///
     /// - Parameter to savepoint: The name of the savepoint to rollback to.
-    /// - Parameter onCompletion: The function to be called when the execution of the rollback transaction command has completed.
-    public func rollbackSync(to savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the operation
+    public func rollbackSync(to savepoint: String) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         rollback(to: savepoint) { res in
@@ -669,10 +654,9 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 
     /// Release a savepoint.
@@ -692,8 +676,8 @@ public class ConnectionPoolConnection: Connection {
     /// Release a savepoint.
     ///
     /// - Parameter savepoint: The name of the savepoint to release.
-    /// - Parameter onCompletion: The function to be called when the execution of the release savepoint command has completed.
-    public func releaseSync(savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
+    /// - Returns: A QueryResult representing the result of the operation
+    public func releaseSync(savepoint: String) -> QueryResult {
         var result: QueryResult?
         let semaphore = DispatchSemaphore(value: 0)
         release(savepoint: savepoint) { res in
@@ -702,9 +686,8 @@ public class ConnectionPoolConnection: Connection {
         }
         semaphore.wait()
         guard let resultUnwrapped = result else {
-            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
-            return
+            return .error(QueryError.noResult("No QueryResult from execute"))
         }
-        onCompletion(resultUnwrapped)
+        return resultUnwrapped
     }
 }
