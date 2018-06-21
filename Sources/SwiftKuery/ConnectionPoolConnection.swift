@@ -14,6 +14,8 @@
  limitations under the License.
  */
 
+import Dispatch
+
 // MARK: ConnectionPoolConnection
 
 /**
@@ -50,7 +52,6 @@ public class ConnectionPoolConnection: Connection {
     
     deinit {
         if let connection = connection {
-            self.connection?.setConnectionPoolWrapper(to: nil)
             pool?.release(connection: connection)
         }
     }
@@ -63,21 +64,42 @@ public class ConnectionPoolConnection: Connection {
     /// Establish a connection with the database.
     ///
     /// - Parameter onCompletion: The function to be called when the connection is established.
-    public func connect(onCompletion: (QueryError?) -> ()) {
-        if let _ = connection {
-            onCompletion(nil)
-        }
-        else {
-            if let newConnection = pool?.getConnection() {
-                connection = newConnection
+    public func connect(onCompletion: @escaping (QueryError?) -> ()) {
+        DispatchQueue.global().async {
+            if let _ = self.connection {
                 onCompletion(nil)
             }
             else {
-                onCompletion(.connection("Failed to get connection"))
+                if let newConnection = self.pool?.getConnection() {
+                    self.connection = newConnection
+                    onCompletion(nil)
+                }
+                else {
+                    onCompletion(.connection("Failed to get connection"))
+                }
             }
         }
     }
     
+    /// Establish a connection with the database.
+    ///
+    /// - Parameter onCompletion: The function to be called when the connection is established.
+    public func connectSync(onCompletion: @escaping (QueryError?) -> ()) {
+        var error: QueryError?
+        let semaphore = DispatchSemaphore(value: 0)
+        connect() { err in
+            error = err
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let errorUnwrapped = error else {
+            // Everything worked
+            onCompletion(nil)
+            return
+        }
+        onCompletion(errorUnwrapped)
+    }
+
     /**
      Close the connection to the database.
      ### Usage Example: ###
@@ -115,77 +137,207 @@ public class ConnectionPoolConnection: Connection {
     /// - Parameter query: The query to execute.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(query: Query, onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(query: query, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a query.
+    ///
+    /// - Parameter query: The query to execute.
+    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
+    public func executeSync(query: Query, onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(query: query) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(query: query, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Execute a raw query.
     ///
     /// - Parameter query: A string that contains the query to execute.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(_ raw: String, onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(raw, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a raw query.
+    ///
+    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
+    public func executeSync(_ raw: String, onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(raw) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(raw, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Execute a query with parameters.
     ///
     /// - Parameter query: The query to execute.
     /// - Parameter parameters: An array of the parameters.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(query: Query, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(query: query, parameters: parameters, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a query with parameters.
+    ///
+    /// - Parameter query: The query to execute.
+    /// - Parameter parameters: An array of the parameters.
+    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
+    public func executeSync(query: Query, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(query: query, parameters: parameters) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(query: query, parameters: parameters, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Execute a raw query with parameters.
     ///
     /// - Parameter query: A string that contains the query to execute.
     /// - Parameter parameters: An array of the parameters.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(_ raw: String, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(raw, parameters: parameters, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a raw query with parameters.
+    ///
+    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter parameters: An array of the parameters.
+    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
+    public func executeSync(_ raw: String, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(raw, parameters: parameters) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(raw, parameters: parameters, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Execute a query with parameters.
     ///
     /// - Parameter query: The query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(query: Query, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(query: query, parameters: parameters, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a query with parameters.
+    ///
+    /// - Parameter query: The query to execute.
+    /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
+    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
+    public func executeSync(query: Query, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(query: query, parameters: parameters) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(query: query, parameters: parameters, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Execute a raw query with parameters.
     ///
     /// - Parameter query: A string that contains the query to execute.
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
     /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
     public func execute(_ raw: String, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(raw, parameters: parameters, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a raw query with parameters.
+    ///
+    /// - Parameter query: A string that contains the query to execute.
+    /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
+    /// - Parameter onCompletion: The function to be called when the execution of the query has completed.
+    public func executeSync(_ raw: String, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(raw, parameters: parameters) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(raw, parameters: parameters, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     // MARK: Prepared statements
 
     /// Create a prepared statement from the passed in query.
@@ -199,7 +351,7 @@ public class ConnectionPoolConnection: Connection {
         }
         return try connection.prepareStatement(query)
     }
-    
+
     /// Create a prepared statement from the passed in query.
     ///
     /// - Parameter raw: A String containing the query to prepare the statement for.
@@ -211,30 +363,73 @@ public class ConnectionPoolConnection: Connection {
         }
         return try connection.prepareStatement(raw)
     }
-    
+
     /// Execute a prepared statement.
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
     /// - Parameter onCompletion: The function to be called when the execution has completed.
     public func execute(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(preparedStatement: preparedStatement, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a prepared statement.
+    ///
+    /// - Parameter preparedStatement: The prepared statement to execute.
+    /// - Parameter onCompletion: The function to be called when the execution has completed.
+    public func executeSync(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(preparedStatement: preparedStatement) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(preparedStatement: preparedStatement, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Execute a prepared statement with parameters.
     ///
     /// - Parameter preparedStatement: The prepared statement to execute.
     /// - Parameter parameters: An array of the parameters.
     /// - Parameter onCompletion: The function to be called when the execution has completed.
     public func execute(preparedStatement: PreparedStatement, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(preparedStatement: preparedStatement, parameters: parameters, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a prepared statement with parameters.
+    ///
+    /// - Parameter preparedStatement: The prepared statement to execute.
+    /// - Parameter parameters: An array of the parameters.
+    /// - Parameter onCompletion: The function to be called when the execution has completed.
+    public func executeSync(preparedStatement: PreparedStatement, parameters: [Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(preparedStatement: preparedStatement, parameters: parameters) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(preparedStatement: preparedStatement, parameters: parameters, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
 
     /// Execute a prepared statement with parameters.
@@ -243,11 +438,33 @@ public class ConnectionPoolConnection: Connection {
     /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
     /// - Parameter onCompletion: The function to be called when the execution has completed.
     public func execute(preparedStatement: PreparedStatement, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.execute(preparedStatement: preparedStatement, parameters: parameters, onCompletion: onCompletion)
+        }
+    }
+
+    /// Execute a prepared statement with parameters.
+    ///
+    /// - Parameter preparedStatement: The prepared statement to execute.
+    /// - Parameter parameters: A dictionary of the parameters with parameter names as the keys.
+    /// - Parameter onCompletion: The function to be called when the execution has completed.
+    public func executeSync(preparedStatement: PreparedStatement, parameters: [String:Any?], onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        execute(preparedStatement: preparedStatement, parameters: parameters) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.execute(preparedStatement: preparedStatement, parameters: parameters, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
 
     /// Release a prepared statement.
@@ -255,11 +472,32 @@ public class ConnectionPoolConnection: Connection {
     /// - Parameter preparedStatement: The prepared statement to release.
     /// - Parameter onCompletion: The function to be called when the execution has completed.
     public func release(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.release(preparedStatement: preparedStatement, onCompletion: onCompletion)
+        }
+    }
+
+    /// Release a prepared statement.
+    ///
+    /// - Parameter preparedStatement: The prepared statement to release.
+    /// - Parameter onCompletion: The function to be called when the execution has completed.
+    public func releaseSync(preparedStatement: PreparedStatement, onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        release(preparedStatement: preparedStatement) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.release(preparedStatement: preparedStatement, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
 
     /// Return a String representation of the query.
@@ -275,75 +513,198 @@ public class ConnectionPoolConnection: Connection {
             throw QueryError.connection("No connection to the database")
         }
     }
-    
+
     // MARK: Transactions
 
     /// Start a transaction.
     ///
     /// - Parameter onCompletion: The function to be called when the execution of the start transaction command has completed.
     public func startTransaction(onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.startTransaction(onCompletion: onCompletion)
+        }
+    }
+
+    /// Start a transaction.
+    ///
+    /// - Parameter onCompletion: The function to be called when the execution of the start transaction command has completed.
+    public func startTransactionSync(onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        startTransaction() { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.startTransaction(onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Commit the current transaction.
     ///
     /// - Parameter onCompletion: The function to be called when the execution of the commit transaction command has completed.
     public func commit(onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.commit(onCompletion: onCompletion)
+        }
+    }
+
+    /// Commit the current transaction.
+    ///
+    /// - Parameter onCompletion: The function to be called when the execution of the commit transaction command has completed.
+    public func commitSync(onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        commit() { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.commit(onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Rollback the current transaction.
     ///
     /// - Parameter onCompletion: The function to be called when the execution of the rollback transaction command has completed.
     public func rollback(onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.rollback(onCompletion: onCompletion)
+        }
+    }
+
+    /// Rollback the current transaction.
+    ///
+    /// - Parameter onCompletion: The function to be called when the execution of the rollback transaction command has completed.
+    public func rollbackSync(onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        rollback() { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.rollback(onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Create a savepoint.
     ///
     /// - Parameter savepoint: The name to  be given to the created savepoint.
     /// - Parameter onCompletion: The function to be called when the execution of the create savepoint command has completed.
     public func create(savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.create(savepoint: savepoint, onCompletion: onCompletion)
+        }
+    }
+
+    /// Create a savepoint.
+    ///
+    /// - Parameter savepoint: The name to  be given to the created savepoint.
+    /// - Parameter onCompletion: The function to be called when the execution of the create savepoint command has completed.
+    public func createSync(savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        create(savepoint: savepoint) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.create(savepoint: savepoint, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Rollback the current transaction to the specified savepoint.
     ///
     /// - Parameter to savepoint: The name of the savepoint to rollback to.
     /// - Parameter onCompletion: The function to be called when the execution of the rollback transaction command has completed.
     public func rollback(to savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.rollback(to: savepoint, onCompletion: onCompletion)
+        }
+    }
+
+    /// Rollback the current transaction to the specified savepoint.
+    ///
+    /// - Parameter to savepoint: The name of the savepoint to rollback to.
+    /// - Parameter onCompletion: The function to be called when the execution of the rollback transaction command has completed.
+    public func rollbackSync(to savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        rollback(to: savepoint) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.rollback(to: savepoint, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
-    
+
     /// Release a savepoint.
     ///
     /// - Parameter savepoint: The name of the savepoint to release.
     /// - Parameter onCompletion: The function to be called when the execution of the release savepoint command has completed.
     public func release(savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
-        guard let connection = connection else {
-            onCompletion(.error(QueryError.connection("Connection is disconnected")))
+        DispatchQueue.global().async {
+            guard let connection = self.connection else {
+                onCompletion(.error(QueryError.connection("Connection is disconnected")))
+                return
+            }
+            connection.release(savepoint: savepoint, onCompletion: onCompletion)
+        }
+    }
+
+    /// Release a savepoint.
+    ///
+    /// - Parameter savepoint: The name of the savepoint to release.
+    /// - Parameter onCompletion: The function to be called when the execution of the release savepoint command has completed.
+    public func releaseSync(savepoint: String, onCompletion: @escaping ((QueryResult) -> ())) {
+        var result: QueryResult?
+        let semaphore = DispatchSemaphore(value: 0)
+        release(savepoint: savepoint) { res in
+            result = res
+            semaphore.signal()
+        }
+        semaphore.wait()
+        guard let resultUnwrapped = result else {
+            onCompletion(.error(QueryError.noResult("No ResultSet from execute")))
             return
         }
-        connection.release(savepoint: savepoint, onCompletion: onCompletion)
+        onCompletion(resultUnwrapped)
     }
 }
