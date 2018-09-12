@@ -28,22 +28,22 @@
     let toDo_title = Column("toDo_title", String.self, notNull: true)
     let toDo_completed = Column("toDo_completed", Bool.self, defaultValue: false)
  }
- 
+
  public class Application {
     let selectQuery = Select(from: ToDoTable())
  }
  ```
  */
 open class Table: Buildable {
-    var _name = ""
+    var _name: String
     // MARK: Parameters
     /// The columns inside the table.
     public private (set) var columns: [Column]
     private var columnsWithPrimaryKeyProperty = 0
-    
+
     /// The alias of the table.
     public private (set) var alias: String?
-    
+
     private var primaryKey: [Column]?
     private var syntaxError = ""
 
@@ -58,8 +58,10 @@ open class Table: Buildable {
 
     // MARK: Initializer
     /// Initialize an instance of Table.
-    public required init() {
+    /// - Parameter name: The name of the table (Optional).
+    public required init(name: String = "") {
         columns = [Column]()
+        _name = name
         let mirror = Mirror(reflecting: self)
         for child in mirror.children {
             if let column = child.value as? Column {
@@ -68,8 +70,7 @@ open class Table: Buildable {
                 if column.isPrimaryKey {
                     columnsWithPrimaryKeyProperty += 1
                 }
-            }
-            else if let label = child.label, label == "tableName" {
+            } else if let label = child.label, label == "tableName", _name.isEmpty {
                 _name = child.value as! String
             }
         }
